@@ -1,0 +1,44 @@
+# Game profile of Crash Team Racing Nitro-Fueled (Switch, update 1.0.15). Started from the provisional profile scripts/build_ipa_from_nsp.py wrote (dm/games/profile_guess.py);
+# the keys below are its guesses unless a comment says what was measured. Format: key <TAB> value (see dm/games/README.md)
+
+# ---- Identity ----
+title_id	0100F9F00C696000
+program_id	0100F9F00C696000
+
+# ---- App ----
+name	Crash™ Team Racing Nitro-Fueled
+ipa	CrashTeamRacingNitroFueled.ipa
+app_category	public.app-category.games
+
+# ---- Versions ----
+build	v983040	1.0.15	main=1c689518406930512c13ddf4217e7676	subsdk0=c8a3cc0b1d1858330a881c0c2fc87940	sdk=3ae34e689d7a35f13cbf42bfd672af8b
+package	v983040
+shader_versions	v983040
+
+# ---- Files ----
+# every module main imports from
+modules	main subsdk0 sdk
+romfs_marker	archives/update.pak
+zip_store	.bk2:.pak:.metallib
+
+# ---- Memory ----
+# main sets a heap of at most the pool − 64 MB: a 3328 MB heap region
+mem_reserve	0x100000000
+mem_alias	0x10000000
+mem_stack	0x10000000
+app_pool	0xCD500000
+# the NPDM declares 0 MB of system resource: IsVirtualAddressMemoryEnabled is false, as on Horizon (Big Brain Academy: Brain vs. Brain sets a heap only then)
+sys_resource	0x0
+
+# ---- Shader split ----
+shader_groups	/archives/=archives /ghosts/=ghosts /dlog/=dlog
+shader_note	Crash™ Team Racing Nitro-Fueled shaders
+
+# ---- After the rewrite ----
+# used memory for the current rewritten modules, at least the default 64 MB
+mem_used	0x7000000
+
+# ---- Frame rate ----
+# the game asks for present interval 2 (30 fps) but steps its races by elapsed time: at one frame per display tick (DM_PRESENT_INTERVAL=display) a race
+# runs at 60 fps (frame time p50 16.65 ms on an M2 Pro) at the same speed as at 30 fps (played on the Mac, 3 November 2026)
+present_interval	display
