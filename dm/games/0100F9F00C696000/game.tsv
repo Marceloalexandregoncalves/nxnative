@@ -39,6 +39,5 @@ shader_note	Crash™ Team Racing Nitro-Fueled shaders
 mem_used	0x7000000
 
 # ---- Frame rate ----
-# the game asks for present interval 2 (30 fps) but steps its races by elapsed time: at one frame per display tick (DM_PRESENT_INTERVAL=display) a race
-# runs at 60 fps (frame time p50 16.65 ms on an M2 Pro) at the same speed as at 30 fps (played on the Mac, 3 November 2026)
-present_interval	display
+# the game's own present interval 2 (30 fps). It steps its races by elapsed time, so DM_PRESENT_INTERVAL=display runs a race at 60 fps
+# (frame time p50 16.65 ms on an M2 Pro) at the same speed as at 30 fps (played on the Mac, 3 November 2026); left to the player

@@ -5,14 +5,14 @@ for Bob's Alchemy engine, on NVN. Modules `main`, `subsdk0` (GLSLC) and `sdk`.
 No game-specific rewriter cuts or host rules.
 
 On the Mac: the intro, the license and language screens, the title screen and
-races, with sound, at 60 fps (`present_interval display`, below). Played with a
+races, with sound, at the game's 30 fps (60 with `DM_PRESENT_INTERVAL=display`, below). Played with a
 Pro Controller. Not tested on the iPhone.
 
 ## What it needs
 
 | Setting | Where | Why |
 |---|---|---|
-| `present_interval display` | [`game.tsv`](game.tsv) | the game asks for present interval 2 (30 fps) but steps its races by elapsed time: at one frame per display tick a race runs at 60 fps at the same speed as at 30 fps |
+| no `present_interval` | [`game.tsv`](game.tsv) | the game's own interval 2 (30 fps) by default; it steps its races by elapsed time, so `DM_PRESENT_INTERVAL=display` runs them at 60 fps at the same speed |
 | `modules main subsdk0 sdk` | `game.tsv` | `subsdk0` is the game's GLSLC, which `main` calls at run time |
 | memory and other keys | `game.tsv` | the provisional profile's guesses, which hold through boot and races |
 
