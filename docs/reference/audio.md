@@ -29,9 +29,16 @@ For a replaced DSP renderer the size query keeps the service's work-buffer contr
 - **Fix:** both forms go through one open that starts the thread (`hle_audren.c` `ar_open`).
 - **Found on:** [Balatro](../../dm/games/0100CD801CE5E000/README.md) (SDK 18.3.2, LÖVE's OpenAL Soft; one boot).
 
+### A game with more than one renderer
+
+- **Symptom:** `[RED] audren: a second renderer (the host drives only one)` with different parameters from the first open; later, `catch-up renders so far` in the thousands (7,625 in 6 minutes), about 10% of the first renderer's frames.
+- **Cause:** a game may open several renderers, as on Horizon. The host kept one set of globals: the second renderer got no render thread, but `AudioRenderSystem::Update` is one hook for all of them, so each update of the second renderer found nothing rendered since the last, rendered a catch-up frame of the second renderer and queued it in the first one's output, in place of a frame of its own.
+- **Fix:** `hle_audren.c` keeps each renderer's state in `ar_t`: its render thread, output, catch-up queue, counters and upsampler history. Two renderers play through two outputs, which the sound card mixes. An SDK call that names only the `AudioRenderSystem` finds its renderer by `ar_of_sys`. One lock still serializes all rendering, since the header layout is decided once, from the first list, by trying each layout in turn; a frame takes about 0.02 ms. Catch-up renders went from 7,625 to 0 or 1 in a run. `dm/host/tests/t_audren_layout.c` checks the lookup and the upsampler's separate history.
+- **Found on:** [Mario & Luigi: Brothership](../../dm/games/01006D0017F7A000/README.md) (SDK 12.3.2): one renderer at 48 kHz, which sounds during the movie, and Unreal's mixer at 32 kHz. Crash Team Racing Nitro-Fueled (`0100F9F00C696000`, SDK 8.2.0): a 32 kHz renderer at boot and a 48 kHz one as the intro starts, without which the frame loop stopped about 3 s later. Red Dead Redemption (`01007820196A6000`, [PR #853](https://github.com/seedds/nxnative/pull/853)): RAGE opens two.
+
 ### The SDK's open with an event calls the open without one (`t_in_open`)
 
-- **Symptom:** `[RED] audren: a second renderer` right after the first open, with the same work buffer and "original device 1 mode 1".
+- **Symptom:** `audren: OpenAudioRenderer` logged twice right after the first open, with the same work buffer and "original device 1 mode 1", and a second render thread (until 2026-11-04 the second log line was `[RED] audren: a second renderer`, which now means [more than one renderer](#a-game-with-more-than-one-renderer)).
 - **Cause:** not a second renderer: SDK 17.5.3's `OpenAudioRenderer` with an event opens it by calling the form without one through the PLT (`sdk+0x1e489c`), which the loader binds to the host's hook since that form has one ([A renderer opened without an event](#a-renderer-opened-without-an-event)), so `ar_open` ran twice for one renderer. The inner call started the render thread before the outer one had created the event, and the outer call took the renderer for a second one.
 - **Fix:** a thread-local flag (`t_in_open`) hands the inner call straight to the SDK with the host's CPU / manual copy of the parameter, and only the outer call starts the thread (`hle_audren.c`).
 - **Found on:** [ROMANCE OF THE THREE KINGDOMS 8 REMAKE](../../dm/games/0100C2A01A730000/README.md) (SDK 17.5.3).
@@ -80,13 +87,6 @@ For a replaced DSP renderer the size query keeps the service's work-buffer contr
 - **Fix:** the host also takes over `AudioRenderSystem::ExecuteAudioRendererRendering`, the PLT target (`hle_audren.c`); catch-ups fell from one per update to 3 per run.
 - **Found on:** [The Legend of Zelda: Breath of the Wild](../../dm/games/01007EF00011E000/README.md) (SDK 20).
 - **Note:** the same SDK's other `AudioRenderSystem` layout is in [SDK 20's `AudioRenderSystem` layout](#sdk-20s-audiorendersystem-layout).
-
-### Several renderers open at once
-
-- **Symptom:** `[RED] audren: a second renderer (the host drives only one)` on a game that really opens two, with the first renderer's sound barely audible (85 of 36,000 rendered frames non-silent), and after the intro the game freezes with its frame counter stopped while audio callbacks go on. The hitch dump (`DM_HITCH_DUMP`) shows the main thread waiting for a mutex that another thread owns, and that thread in `nn::os::WaitSystemEvent` (a loop around `ReleaseVoiceSlot`, `RequestUpdateAudioRenderer`, `IsMemoryPoolAttached`).
-- **Cause:** the host kept one renderer in globals (handle, open flag, render thread, catch-up queue, resampler history), so a second `OpenAudioRenderer` was refused and started no render thread. Nothing signalled that renderer's event, and the thread that released its voices and memory pools waited for it forever, holding the game's render mutex.
-- **Fix:** `hle_audren.c` keeps this state per renderer (`ar_t`, up to `AR_MAX` = 4): each renderer has its own render thread, its own host PCM output (up to 8 outputs exist) and its own catch-up queue, and the SDK's render and update hooks find their renderer by the system pointer (`ar_for`: seen before, else handle + 0x60, else the renderer of the calling render thread). Rendering itself stays serialized by one lock.
-- **Found on:** Red Dead Redemption (`01007820196A6000`, [PR #853](https://github.com/seedds/nxnative/pull/853)): RAGE opens two renderers. Crash Team Racing Nitro-Fueled (`0100F9F00C696000`, SDK 8.2.0): a 32 kHz renderer at boot and a 48 kHz one as the intro starts; the frame loop stopped about 3 s later, and runs into its races with both rendered.
 
 ### A renderer below 48 kHz with no upsampler on the CPU
 
